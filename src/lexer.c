@@ -6,54 +6,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-typedef enum {
-        LPAREN = 0,  // (
-        RPAREN,      // )
-        LBRACKET,    // [
-        RBRACKET,    // ]
-        LBRACE,      // {
-        RBRACE,      // }
-        EQUAL,       // =
-        STAR,        // *
-        PLUS,        // +
-        MINUS,       // -
-        PIPE,        // |
-        AMPERSAND,   // &
-        AND,         // &&
-        OR,          // ||
-        BANG,        // !
-        EQUAL_EQUAL, // ==
-        NOT_EQUAL,   // !=
-        GREATER,     // >
-        LESS,        // <
-        GREATER_EQ,  // >=
-        LESS_EQ,     // <=
-        BACKSLASH,
-        QUESTION,   // ?
-        CARET,      // ^
-        QUOTE,      // "
-        COMMA,      // ,
-        AT,         // @
-        HASH,       // #
-        UNDERSCORE, // _
-        DOLLAR,     // $
-        DOT,        // .
-        BACKTICK,   // `
-        TILDE,      // ~
-        PERCENT,    // %
-        SLASH,      // /
-        DEL,        // DEL
-        INTEGER,    // 0
-        NUMBER,     // 0.0
-        APOSTROPHE, // '
-        COLON,      // :
-        SEMICOLON,  // ;
-        IDENTIFIER,
-        KEYWORD,
-        LexTypeLen,
-} LexType;
+#include "lexer.h"
 
-const char *const lex_type_repr_lookup[] = {
+static const char *const lex_type_repr_lookup[] = {
         [LPAREN] = "LPAREN",
         [RPAREN] = "RPAREN",
         [LBRACKET] = "LBRACKET",
@@ -162,18 +117,10 @@ const struct LexDef lex_def_table[] = {
         { "while", KEYWORD },
         { "for", KEYWORD },
         { "loop", KEYWORD },
+        { "true", KEYWORD },
+        { "false", KEYWORD },
         /* ... */
 };
-
-typedef struct Lex {
-        union {
-                char *text;
-                long i;
-                double f;
-        } as;
-        LexType type;
-        struct Lex *next;
-} Lex;
 
 static void
 _report(char *file, int line, char *format, ...)
@@ -185,7 +132,6 @@ _report(char *file, int line, char *format, ...)
         putchar(10);
         va_end(ap);
 }
-#define report(format, ...) _report(__FILE__, __LINE__, format, ##__VA_ARGS__)
 
 char *
 parse_identifier(char **s, int *len)
@@ -229,14 +175,21 @@ lexer(char *s)
         size_t lex_def_table_len = sizeof lex_def_table / sizeof *lex_def_table;
         int i;
         size_t len;
+        int linecount = 1;
+        char *linestart = s;
 
 // as a while loop but without indentation
 cont:
 
         while (isspace(*s)) {
+                if (*s == '\n') {
+                        ++linecount;
+                        linestart = s + 1;
+                }
                 ++s;
         }
 
+        char *lexoffset = s;
         if (isdigit(*s)) {
                 long num = parse_num(&s);
                 if (*s == '.' && isdigit(s[1])) {
@@ -248,6 +201,8 @@ cont:
                         Lex *lex = lex_new();
                         lex->as.f = num + dec;
                         lex->type = NUMBER;
+                        lex->line = linecount;
+                        lex->offset = lexoffset - linestart + 1;
                         current->next = lex;
                         current = lex;
 
@@ -255,6 +210,8 @@ cont:
                         Lex *lex = lex_new();
                         lex->as.i = num;
                         lex->type = INTEGER;
+                        lex->line = linecount;
+                        lex->offset = lexoffset - linestart + 1;
                         current->next = lex;
                         current = lex;
                 }
@@ -271,6 +228,8 @@ cont:
                                               lex_def_table[i].str,
                                               len);
                         lex->type = lex_def_table[i].type;
+                        lex->line = linecount;
+                        lex->offset = lexoffset - linestart + 1;
                         current->next = lex;
                         current = lex;
                         goto cont;
@@ -285,6 +244,8 @@ cont:
                                       id,
                                       len);
                 lex->type = IDENTIFIER;
+                lex->line = linecount;
+                lex->offset = lexoffset - linestart + 1;
                 current->next = lex;
                 current = lex;
                 goto cont;
@@ -321,7 +282,10 @@ lex_print(Lex head)
 {
         Lex *current = &head;
         while (current->next) {
-                printf("Lex: %s", lex_type_repr(current->next->type));
+                printf("Lex at %d,%d -> %s",
+                       current->next->line,
+                       current->next->offset,
+                       lex_type_repr(current->next->type));
 
                 switch (current->next->type) {
                 case INTEGER: printf(" `%ld`", current->next->as.i); break;

@@ -1,10 +1,25 @@
-#include "lexer.c"
+#include "lexer.h"
+#include <assert.h>
+#include <fcntl.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
 
 int
 main()
 {
-        char buff[] = "var 1.65 = sum(1, 0.65);";
-        Lex head = lexer(buff);
-        lex_print(head);
-        lex_free(head);
+        char buf[1024];
+        int fd;
+        char *filename = "example";
+        fd = open(filename, O_RDONLY);
+        if (fd < 0) {
+                printf("Couldn't open file %s\n", filename);
+                return 1;
+        }
+        while (read(fd, buf, sizeof buf) > 0) {
+                Lex head = lexer(buf);
+                lex_print(head);
+                lex_free(head);
+        }
+        return 1;
 }
