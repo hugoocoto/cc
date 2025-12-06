@@ -2,6 +2,8 @@
 #define TOKEN(...) // lsp shut up
 #endif
 
+TOKEN(PLUSPLUS)    // ++
+TOKEN(LESSLESS)    // --
 TOKEN(LPAREN)      // (
 TOKEN(RPAREN)      // )
 TOKEN(LBRACKET)    // [

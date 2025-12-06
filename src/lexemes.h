@@ -13,6 +13,8 @@
 // LEXEME( "?\?-", TILDE )
 // LEXEME( "?\?!", PIPE )
 
+LEXEME("++", PLUSPLUS)
+LEXEME("--", LESSLESS)
 LEXEME("&&", AND)
 LEXEME("||", OR)
 LEXEME("==", EQUAL_EQUAL)
@@ -60,3 +62,4 @@ LEXEME("for", KEYWORD)
 LEXEME("loop", KEYWORD)
 LEXEME("true", KEYWORD)
 LEXEME("false", KEYWORD)
+LEXEME("this thing", SOMETHING)

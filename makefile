@@ -1,4 +1,4 @@
-FLAGS = -std=gnu99 -Wall -Wextra -ggdb -fsanitize=address,null -lm
+FLAGS = -Wall -Wextra -ggdb -fsanitize=address,null -lm
 
 main: bin obj/main.o obj/lexer.o
 	gcc obj/main.o obj/lexer.o -o bin/main $(FLAGS)
@@ -6,7 +6,7 @@ main: bin obj/main.o obj/lexer.o
 obj/main.o: obj src/main.c
 	gcc src/main.c -c -o obj/main.o $(FLAGS) 
 
-obj/lexer.o: obj src/lexer.c
+obj/lexer.o: obj src/lexer.c src/lexemes.h src/tokens.h
 	gcc src/lexer.c -c -o obj/lexer.o $(FLAGS) 
 
 clean:

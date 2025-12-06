@@ -105,9 +105,24 @@ lex_new()
         return calloc(1, sizeof(Lex));
 }
 
+void
+check_tables_integrity()
+{
+        // check that lexeme-type is a valid token. Throws compile error if not
+        const LexType lex_types[] = {
+/*         */ #define LEXEME(repr, type) type,
+/*         */ #include "lexemes.h"
+/*         */ #undef LEXEME
+        };
+        (void) lex_types;
+        return;
+}
+
 Lex
 lexer(char *s)
 {
+        check_tables_integrity();
+
         Lex lex_head = { 0 };
         Lex *current = &lex_head;
         size_t lex_def_table_len = sizeof lex_def_table / sizeof *lex_def_table;
