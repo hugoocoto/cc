@@ -1,3 +1,3 @@
-# Statically Typed Embeddable Programming Language
+# C compiler
 
-Just to write the vicel config file in this language.
+Status: unusable

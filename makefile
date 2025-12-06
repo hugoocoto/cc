@@ -1,14 +1,18 @@
-main: obj/main.o obj/lexer.o
-	@mkdir -p bin
-	gcc obj/main.o obj/lexer.o -o bin/main -lm -fsanitize=address,null -ggdb
+FLAGS = -std=gnu99 -Wall -Wextra -ggdb -fsanitize=address,null -lm
 
-obj/main.o: src/main.c
-	@mkdir -p obj
-	gcc src/main.c -c -o obj/main.o -lm -fsanitize=address,null -ggdb
+main: bin obj/main.o obj/lexer.o
+	gcc obj/main.o obj/lexer.o -o bin/main $(FLAGS)
 
-obj/lexer.o: src/lexer.c
-	@mkdir -p obj
-	gcc src/lexer.c -c -o obj/lexer.o -lm -fsanitize=address,null -ggdb
+obj/main.o: obj src/main.c
+	gcc src/main.c -c -o obj/main.o $(FLAGS) 
+
+obj/lexer.o: obj src/lexer.c
+	gcc src/lexer.c -c -o obj/lexer.o $(FLAGS) 
 
 clean:
 	rm obj bin -r
+
+obj:
+	mkdir -p obj
+bin:
+	mkdir -p bin

@@ -18,7 +18,7 @@ main()
         }
         while (read(fd, buf, sizeof buf) > 0) {
                 Lex head = lexer(buf);
-                lex_print(head);
+                lex_print_all(head);
                 lex_free(head);
         }
         return 1;

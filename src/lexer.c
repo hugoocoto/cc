@@ -9,58 +9,15 @@
 #include "lexer.h"
 
 static const char *const lex_type_repr_lookup[] = {
-        [LPAREN] = "LPAREN",
-        [RPAREN] = "RPAREN",
-        [LBRACKET] = "LBRACKET",
-        [RBRACKET] = "RBRACKET",
-        [LBRACE] = "LBRACE",
-        [RBRACE] = "RBRACE",
-        [EQUAL] = "EQUAL",
-        [STAR] = "STAR",
-        [PLUS] = "PLUS",
-        [MINUS] = "MINUS",
-        [PIPE] = "PIPE",
-        [AMPERSAND] = "AMPERSAND",
-        [AND] = "AND",
-        [OR] = "OR",
-        [BANG] = "BANG",
-        [EQUAL_EQUAL] = "EQUAL_EQUAL",
-        [NOT_EQUAL] = "NOT_EQUAL",
-        [GREATER] = "GREATER",
-        [LESS] = "LESS",
-        [GREATER_EQ] = "GREATER_EQ",
-        [LESS_EQ] = "LESS_EQ",
-        [BACKSLASH] = "BACKSLASH",
-        [QUESTION] = "QUESTION",
-        [CARET] = "CARET",
-        [QUOTE] = "QUOTE",
-        [COMMA] = "COMMA",
-        [AT] = "AT",
-        [HASH] = "HASH",
-        [UNDERSCORE] = "UNDERSCORE",
-        [DOLLAR] = "DOLLAR",
-        [DOT] = "DOT",
-        [BACKTICK] = "BACKTICK",
-        [TILDE] = "TILDE",
-        [PERCENT] = "PERCENT",
-        [SLASH] = "SLASH",
-        [DEL] = "DEL",
-        [INTEGER] = "INTEGER",
-        [NUMBER] = "NUMBER",
-        [APOSTROPHE] = "APOSTROPHE",
-        [COLON] = "COLON",
-        [SEMICOLON] = "SEMICOLON",
-        [IDENTIFIER] = "IDENTIFIER",
-        [KEYWORD] = "KEYWORD",
-        [LexTypeLen] = "LexTypeLen",
+#define TOKEN(name) [name] = #name,
+#include "tokens.h"
+#undef TOKEN
 };
 
 const char *
 lex_type_repr(LexType type)
 {
-        if (type < 0 || type >= LexTypeLen) {
-                return "LexTypeOOB";
-        }
+        if (type < 0 || type >= LexTypeLen) return "LexTypeOOB";
         return lex_type_repr_lookup[type];
 }
 
@@ -72,54 +29,9 @@ struct LexDef {
 // I know this is slow and inefficient but as I don't know how my language is
 // going to looks like, It's easier for me to do it this way.
 const struct LexDef lex_def_table[] = {
-        { "&&", AND },
-        { "||", OR },
-        { "==", EQUAL_EQUAL },
-        { "!=", NOT_EQUAL },
-        { ">=", GREATER_EQ },
-        { "<=", LESS_EQ },
-        { "\\", BACKSLASH },
-        { "(", LPAREN },
-        { ")", RPAREN },
-        { "[", LBRACKET },
-        { "]", RBRACKET },
-        { "{", LBRACE },
-        { "}", RBRACE },
-        { "=", EQUAL },
-        { "*", STAR },
-        { "+", PLUS },
-        { "-", MINUS },
-        { "|", PIPE },
-        { "&", AMPERSAND },
-        { "!", BANG },
-        { ">", GREATER },
-        { "<", LESS },
-        { "?", QUESTION },
-        { "^", CARET },
-        { "\"", QUOTE },
-        { ",", COMMA },
-        { "@", AT },
-        { "#", HASH },
-        { "_", UNDERSCORE },
-        { "$", DOLLAR },
-        { ".", DOT },
-        { "`", BACKTICK },
-        { "~", TILDE },
-        { "%", PERCENT },
-        { "/", SLASH },
-        { "'", APOSTROPHE },
-        { ":", COLON },
-        { ";", SEMICOLON },
-
-        // keywords
-        { "if", KEYWORD },
-        { "else", KEYWORD },
-        { "while", KEYWORD },
-        { "for", KEYWORD },
-        { "loop", KEYWORD },
-        { "true", KEYWORD },
-        { "false", KEYWORD },
-        /* ... */
+#define LEXEME(repr, type) { repr, type },
+#include "lexemes.h"
+#undef LEXEME
 };
 
 static void
@@ -131,6 +43,32 @@ _report(char *file, int line, char *format, ...)
         vprintf(format, ap);
         putchar(10);
         va_end(ap);
+}
+
+char
+parse_char(char **s)
+{
+        if (**s == '\\') {
+                ++*s;
+                switch (**s) {
+                case 'a': ++*s; return '\a';
+                case 'b': ++*s; return '\b';
+                case 'f': ++*s; return '\f';
+                case 'n': ++*s; return '\n';
+                case 'r': ++*s; return '\r';
+                case 't': ++*s; return '\t';
+                case 'v': ++*s; return '\v';
+                default: break;
+                }
+        }
+        if (**s == '\'') return 0; // allow empty char as null char
+        return *((*s)++);
+}
+
+char *
+parse_string()
+{
+        return NULL;
 }
 
 char *
@@ -173,7 +111,7 @@ lexer(char *s)
         Lex lex_head = { 0 };
         Lex *current = &lex_head;
         size_t lex_def_table_len = sizeof lex_def_table / sizeof *lex_def_table;
-        int i;
+        size_t i;
         size_t len;
         int linecount = 1;
         char *linestart = s;
@@ -218,6 +156,62 @@ cont:
                 goto cont;
         }
 
+        if (*s == '"') {
+                int capacity = 8; // initial cap
+                char *buf = malloc(capacity);
+                int count = 0;
+                ++s; // consume "
+                while (*s != '"') {
+                        if (*s == '\n') break; // error: multiline not supported
+                        char c = parse_char(&s);
+                        if (count + 1 == capacity) {
+                                buf = realloc(buf, (capacity *= 2));
+                        }
+                        buf[count++] = c;
+                }
+                buf[count] = 0; // zero terminated
+                if (*s != '\"') {
+                        report("Invalid string at %d:%d: `%*s`",
+                               linecount,
+                               lexoffset - linestart + 1,
+                               s - lexoffset + 1,
+                               lexoffset);
+                        goto cont;
+                }
+                ++s; // consume "
+                Lex *lex = lex_new();
+                lex->as.text = buf;
+                lex->type = STRING;
+                lex->line = linecount;
+                lex->offset = lexoffset - linestart + 1;
+                current->next = lex;
+                current = lex;
+                goto cont;
+        }
+
+        if (*s == '\'') {
+                ++s; // consume '
+                char c = parse_char(&s);
+                if (*s != '\'') {
+                        report("Invalid char at %d:%d: `%*s`",
+                               linecount,
+                               lexoffset - linestart + 1,
+                               s - lexoffset + 1,
+                               lexoffset);
+                        goto cont;
+                }
+                ++s; // consume '
+                Lex *lex = lex_new();
+                lex->as.c = c;
+                lex->type = CHAR;
+                lex->line = linecount;
+                lex->offset = lexoffset - linestart + 1;
+                current->next = lex;
+                current = lex;
+                goto cont;
+        }
+
+
         for (i = 0; i < lex_def_table_len; i++) {
                 len = strlen(lex_def_table[i].str);
                 if (!strncmp(lex_def_table[i].str, s, len)) {
@@ -225,8 +219,7 @@ cont:
 
                         Lex *lex = lex_new();
                         lex->as.text = memcpy(calloc(1, len + 1),
-                                              lex_def_table[i].str,
-                                              len);
+                                              lex_def_table[i].str, len);
                         lex->type = lex_def_table[i].type;
                         lex->line = linecount;
                         lex->offset = lexoffset - linestart + 1;
@@ -269,6 +262,7 @@ lex_free(Lex head)
                 next = current->next;
                 switch (current->type) {
                 case INTEGER:
+                case CHAR:
                 case NUMBER: break;
                 default: free(current->as.text); break;
                 }
@@ -278,26 +272,26 @@ lex_free(Lex head)
 }
 
 void
-lex_print(Lex head)
+lex_print_all(Lex head)
 {
         Lex *current = &head;
         while (current->next) {
-                printf("Lex at %d,%d -> %s",
-                       current->next->line,
-                       current->next->offset,
-                       lex_type_repr(current->next->type));
-
-                switch (current->next->type) {
-                case INTEGER: printf(" `%ld`", current->next->as.i); break;
-                case NUMBER: printf(" `%lf`", current->next->as.f); break;
-                case IDENTIFIER:
-                case KEYWORD:
-                default:
-                        printf(" `%s`", current->next->as.text);
-                        break;
-                }
-                putchar(10);
-
+                lex_print(current->next);
                 current = current->next;
         }
+}
+
+void
+lex_print(Lex *l)
+{
+        printf("Lex at %d,%d -> %s", l->line, l->offset, lex_type_repr(l->type));
+
+        switch (l->type) {
+        case INTEGER: printf(" `%ld`", l->as.i); break;
+        case NUMBER: printf(" `%lf`", l->as.f); break;
+        case CHAR: printf(isprint(l->as.c) ? " '%c'" : " %d", l->as.c); break;
+        case STRING: printf(" \"%s\"", l->as.text); break;
+        default: printf(" `%s`", l->as.text); break;
+        }
+        putchar(10);
 }
