@@ -99,6 +99,53 @@ parse_num(char **s)
         return n;
 }
 
+#define lex_new_any(_s, _line, _offset, _type) \
+        do {                                   \
+                Lex *lex = lex_new();          \
+                lex->as.text = _s;             \
+                lex->type = _type;             \
+                lex->line = _line;             \
+                lex->offset = _offset;         \
+                current->next = lex;           \
+                current = lex;                 \
+        } while (0);
+
+#define lex_new_s(_s, _line, _offset) \
+        lex_new_any(_s, _line, _offset, STRING)
+
+#define lex_new_f(_f, _line, _offset)  \
+        do {                           \
+                Lex *lex = lex_new();  \
+                lex->as.f = _f;        \
+                lex->type = NUMBER;    \
+                lex->line = _line;     \
+                lex->offset = _offset; \
+                current->next = lex;   \
+                current = lex;         \
+        } while (0);
+
+#define lex_new_i(_i, _line, _offset)  \
+        do {                           \
+                Lex *lex = lex_new();  \
+                lex->as.i = _i;        \
+                lex->type = INTEGER;   \
+                lex->line = _line;     \
+                lex->offset = _offset; \
+                current->next = lex;   \
+                current = lex;         \
+        } while (0);
+
+#define lex_new_c(_c, _line, _offset)  \
+        do {                           \
+                Lex *lex = lex_new();  \
+                lex->as.c = _c;        \
+                lex->type = CHAR;      \
+                lex->line = _line;     \
+                lex->offset = _offset; \
+                current->next = lex;   \
+                current = lex;         \
+        } while (0);
+
 Lex *
 lex_new()
 {
@@ -147,26 +194,14 @@ cont:
                 long num = parse_num(&s);
                 if (*s == '.' && isdigit(s[1])) {
                         ++s; // consume dot
-                        // Waaaay too inacurate
                         double dec = parse_num(&s);
+                        // Waaaay too inacurate
                         dec /= pow(10, (int) log10(dec) + 1);
 
-                        Lex *lex = lex_new();
-                        lex->as.f = num + dec;
-                        lex->type = NUMBER;
-                        lex->line = linecount;
-                        lex->offset = lexoffset - linestart + 1;
-                        current->next = lex;
-                        current = lex;
+                        lex_new_f(num + dec, linecount, lexoffset - linestart + 1);
 
                 } else {
-                        Lex *lex = lex_new();
-                        lex->as.i = num;
-                        lex->type = INTEGER;
-                        lex->line = linecount;
-                        lex->offset = lexoffset - linestart + 1;
-                        current->next = lex;
-                        current = lex;
+                        lex_new_i(num, linecount, lexoffset - linestart + 1);
                 }
                 goto cont;
         }
@@ -194,13 +229,7 @@ cont:
                         goto cont;
                 }
                 ++s; // consume "
-                Lex *lex = lex_new();
-                lex->as.text = buf;
-                lex->type = STRING;
-                lex->line = linecount;
-                lex->offset = lexoffset - linestart + 1;
-                current->next = lex;
-                current = lex;
+                lex_new_s(buf, linecount, lexoffset - linestart + 1);
                 goto cont;
         }
 
@@ -216,13 +245,7 @@ cont:
                         goto cont;
                 }
                 ++s; // consume '
-                Lex *lex = lex_new();
-                lex->as.c = c;
-                lex->type = CHAR;
-                lex->line = linecount;
-                lex->offset = lexoffset - linestart + 1;
-                current->next = lex;
-                current = lex;
+                lex_new_c(c, linecount, lexoffset - linestart + 1);
                 goto cont;
         }
 
@@ -232,14 +255,7 @@ cont:
                 if (!strncmp(lex_def_table[i].str, s, len)) {
                         s += len;
 
-                        Lex *lex = lex_new();
-                        lex->as.text = memcpy(calloc(1, len + 1),
-                                              lex_def_table[i].str, len);
-                        lex->type = lex_def_table[i].type;
-                        lex->line = linecount;
-                        lex->offset = lexoffset - linestart + 1;
-                        current->next = lex;
-                        current = lex;
+                        lex_new_any(memcpy(calloc(1, len + 1), lex_def_table[i].str, len), linecount, lexoffset - linestart + 1, lex_def_table[i].type);
                         goto cont;
                 }
         }
@@ -307,6 +323,46 @@ lex_print(Lex *l)
         case CHAR: printf(isprint(l->as.c) ? " '%c'" : " %d", l->as.c); break;
         case STRING: printf(" \"%s\"", l->as.text); break;
         default: printf(" `%s`", l->as.text); break;
+        }
+        putchar(10);
+}
+
+void
+lex_print_groups(Lex head)
+{
+        // clang-format off
+#define OSEP "\033[0;3m" "("
+#define CSEP "\033[0;3m" ")" "\033[0m"
+#define STYLE "\033[0;1m"
+        // clang-format on
+
+        Lex *current = &head;
+        while (current->next) {
+                switch (current->next->type) {
+                case INTEGER:
+                        printf(OSEP STYLE "%ld" CSEP,
+                               current->next->as.i);
+                        break;
+                case NUMBER:
+                        printf(OSEP STYLE "%lf" CSEP,
+                               current->next->as.f);
+                        break;
+                case CHAR:
+                        printf(isprint(current->next->as.c) ?
+                               OSEP STYLE "%c'" CSEP :
+                               OSEP STYLE "%d'" CSEP,
+                               current->next->as.c);
+                        break;
+                case STRING:
+                        printf(OSEP STYLE "%s\"" CSEP,
+                               current->next->as.text);
+                        break;
+                default:
+                        printf(OSEP STYLE "%s" CSEP,
+                               current->next->as.text);
+                        break;
+                }
+                current = current->next;
         }
         putchar(10);
 }

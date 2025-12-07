@@ -22,8 +22,9 @@ typedef struct Lex {
 #define report(format, ...) _report(__FILE__, __LINE__, format, ##__VA_ARGS__)
 
 Lex lexer(char *s);
-void lex_print(Lex *l);
 void lex_print_all(Lex head);
+void lex_print_groups(Lex head);
+void lex_print(Lex *l);
 void lex_free(Lex head);
 const char *lex_type_repr(LexType type);
 
