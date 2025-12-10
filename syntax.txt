@@ -6,10 +6,10 @@
 
  token:
         keyword
-        identifier
         constant
         string-literal
         punctuator
+        identifier
 
  preprocessing-token:
         header-name
