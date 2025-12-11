@@ -30,32 +30,25 @@ _Imaginary
 
                                A.1.3 Identifiers
 
- identifier:
-        identifier-nondigit
-        identifier identifier-nondigit
-        identifier digit
+identifier: 
+        identifier-nondigit ( identifier-nondigit |  digit )*
 
- identifier-nondigit:
-        nondigit
-        universal-character-name
-        other implementation-defined characters
+identifier-nondigit: 
+        nondigit | universal-character-name
 
- nondigit: one of
-_ a b c n o p A B C N O P d q D Q e r E R f s F S g t G T h u H U i v I V j w J
-W k x K X l y L Y m z M Z
+nondigit:
+        [_a-zA-Z]
 
- digit: one of
-0 1 2 4 5 6 7 8 9 3
+digit: 
+        [0-9]
 
                         A.1.4 Universal character names
 
- universal-character-name:
-        \u hex-quad
-        \U hex-quad hex-quad
+universal-character-name: 
+        (\u hex-quad) | (\U hex-quad hex-quad)
 
  hex-quad:
-        hexadecimal-digit hexadecimal-digit
-        hexadecimal-digit hexadecimal-digit
+        hexadecimal-digit {4}
 
                                 A.1.5 Constants
 
