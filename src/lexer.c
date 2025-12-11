@@ -35,12 +35,15 @@ typedef struct Tok {
         union {
                 struct {
                         // clang-format off
-                        enum { AUTO, BREAK, CASE, CHAR, CONST, CONTINUE, 
+                        enum { 
+                                KEYWORD_NONE = 0,
+                                AUTO, BREAK, CASE, CHAR, CONST, CONTINUE, 
                                 DEFAULT, DO, DOUBLE, ELSE, ENUM, EXTERN, FLOAT, 
                                 FOR, GOTO, IF, INLINE, INT, LONG, REGISTER, 
                                 RESTRICT, RETURN, SHORT, SIGNED, SIZEOF, STATIC, 
                                 STRUCT, SWITCH, TYPEDEF, UNION, UNSIGNED, VOID, 
                                 VOLATILE, WHILE, _BOOL, _COMPLEX, _IMAGINARY,
+                                KEYWORD_MAXLEN,
                         } type;
                         // clang-format on
                 } keyword;
@@ -114,6 +117,61 @@ typedef struct Tok {
         };
         struct Tok *next;
 } Tok;
+
+const char *
+tok_keyword_repr(int kw)
+{
+        static const char *const lookup[] = {
+                [AUTO] = "AUTO",
+                [BREAK] = "BREAK",
+                [CASE] = "CASE",
+                [CHAR] = "CHAR",
+                [CONST] = "CONST",
+                [CONTINUE] = "CONTINUE",
+                [DEFAULT] = "DEFAULT",
+                [DO] = "DO",
+                [DOUBLE] = "DOUBLE",
+                [ELSE] = "ELSE",
+                [ENUM] = "ENUM",
+                [EXTERN] = "EXTERN",
+                [FLOAT] = "FLOAT",
+                [FOR] = "FOR",
+                [GOTO] = "GOTO",
+                [IF] = "IF",
+                [INLINE] = "INLINE",
+                [INT] = "INT",
+                [LONG] = "LONG",
+                [REGISTER] = "REGISTER",
+                [RESTRICT] = "RESTRICT",
+                [RETURN] = "RETURN",
+                [SHORT] = "SHORT",
+                [SIGNED] = "SIGNED",
+                [SIZEOF] = "SIZEOF",
+                [STATIC] = "STATIC",
+                [STRUCT] = "STRUCT",
+                [SWITCH] = "SWITCH",
+                [TYPEDEF] = "TYPEDEF",
+                [UNION] = "UNION",
+                [UNSIGNED] = "UNSIGNED",
+                [VOID] = "VOID",
+                [VOLATILE] = "VOLATILE",
+                [WHILE] = "WHILE",
+                [_BOOL] = "_BOOL",
+                [_COMPLEX] = "_COMPLEX",
+                [_IMAGINARY] = "_IMAGINARY",
+
+        };
+        if (sizeof lookup / sizeof lookup[0] != KEYWORD_MAXLEN - KEYWORD_NONE) {
+                printf("Lookup size: %ld, with KEYWORD_MAXLEN = %d\n",
+                       sizeof lookup / sizeof lookup[0], KEYWORD_MAXLEN);
+                exit(1);
+        }
+        if (kw <= KEYWORD_NONE || kw >= KEYWORD_MAXLEN) {
+                printf("Invalid keyword: %d of %d\n", kw, KEYWORD_MAXLEN);
+                exit(1);
+        }
+        return lookup[kw];
+}
 
 const char *
 tok_pun_repr(int pun)
@@ -226,7 +284,134 @@ match_consume_identifier(char **cursor, Tok *prev)
         prev->next = tok_new();
         prev->next->type = TOK_IDENTIFIER;
         prev->next->identifier.name = strndup(start, *cursor - start);
-        printf("New identifier: `%s`\n", prev->next->identifier.name);
+        return true;
+}
+
+bool
+match_consume_keyword(char **cursor, Tok *prev)
+{
+        int k;
+        if (0) {
+        } else if (!strcmp("auto", *cursor)) {
+                k = AUTO;
+                *cursor += strlen("auto");
+        } else if (!strcmp("break", *cursor)) {
+                k = BREAK;
+                *cursor += strlen("break");
+        } else if (!strcmp("case", *cursor)) {
+                k = CASE;
+                *cursor += strlen("case");
+        } else if (!strcmp("char", *cursor)) {
+                k = CHAR;
+                *cursor += strlen("char");
+        } else if (!strcmp("const", *cursor)) {
+                k = CONST;
+                *cursor += strlen("const");
+        } else if (!strcmp("continue", *cursor)) {
+                k = CONTINUE;
+                *cursor += strlen("continue");
+        } else if (!strcmp("default", *cursor)) {
+                k = DEFAULT;
+                *cursor += strlen("default");
+        } else if (!strcmp("do", *cursor)) {
+                k = DO;
+                *cursor += strlen("do");
+        } else if (!strcmp("double", *cursor)) {
+                k = DOUBLE;
+                *cursor += strlen("double");
+        } else if (!strcmp("else", *cursor)) {
+                k = ELSE;
+                *cursor += strlen("else");
+        } else if (!strcmp("enum", *cursor)) {
+                k = ENUM;
+                *cursor += strlen("enum");
+        } else if (!strcmp("extern", *cursor)) {
+                k = EXTERN;
+                *cursor += strlen("extern");
+        } else if (!strcmp("float", *cursor)) {
+                k = FLOAT;
+                *cursor += strlen("float");
+        } else if (!strcmp("for", *cursor)) {
+                k = FOR;
+                *cursor += strlen("for");
+        } else if (!strcmp("goto", *cursor)) {
+                k = GOTO;
+                *cursor += strlen("goto");
+        } else if (!strcmp("if", *cursor)) {
+                k = IF;
+                *cursor += strlen("if");
+        } else if (!strcmp("inline", *cursor)) {
+                k = INLINE;
+                *cursor += strlen("inline");
+        } else if (!strcmp("int", *cursor)) {
+                k = INT;
+                *cursor += strlen("int");
+        } else if (!strcmp("long", *cursor)) {
+                k = LONG;
+                *cursor += strlen("long");
+        } else if (!strcmp("register", *cursor)) {
+                k = REGISTER;
+                *cursor += strlen("register");
+        } else if (!strcmp("restrict", *cursor)) {
+                k = RESTRICT;
+                *cursor += strlen("restrict");
+        } else if (!strcmp("return", *cursor)) {
+                k = RETURN;
+                *cursor += strlen("return");
+        } else if (!strcmp("short", *cursor)) {
+                k = SHORT;
+                *cursor += strlen("short");
+        } else if (!strcmp("signed", *cursor)) {
+                k = SIGNED;
+                *cursor += strlen("signed");
+        } else if (!strcmp("sizeof", *cursor)) {
+                k = SIZEOF;
+                *cursor += strlen("sizeof");
+        } else if (!strcmp("static", *cursor)) {
+                k = STATIC;
+                *cursor += strlen("static");
+        } else if (!strcmp("struct", *cursor)) {
+                k = STRUCT;
+                *cursor += strlen("struct");
+        } else if (!strcmp("switch", *cursor)) {
+                k = SWITCH;
+                *cursor += strlen("switch");
+        } else if (!strcmp("typedef", *cursor)) {
+                k = TYPEDEF;
+                *cursor += strlen("typedef");
+        } else if (!strcmp("union", *cursor)) {
+                k = UNION;
+                *cursor += strlen("union");
+        } else if (!strcmp("unsigned", *cursor)) {
+                k = UNSIGNED;
+                *cursor += strlen("unsigned");
+        } else if (!strcmp("void", *cursor)) {
+                k = VOID;
+                *cursor += strlen("void");
+        } else if (!strcmp("volatile", *cursor)) {
+                k = VOLATILE;
+                *cursor += strlen("volatile");
+        } else if (!strcmp("while", *cursor)) {
+                k = WHILE;
+                *cursor += strlen("while");
+        } else if (!strcmp("_Bool", *cursor)) {
+                k = _BOOL;
+                *cursor += strlen("_Bool");
+        } else if (!strcmp("_Complex", *cursor)) {
+                k = _COMPLEX;
+                *cursor += strlen("_Complex");
+        } else if (!strcmp("_Imaginary", *cursor)) {
+                k = _IMAGINARY;
+                *cursor += strlen("_Imaginary");
+        }
+
+        else {
+                return false;
+        }
+
+        prev->next = tok_new();
+        prev->next->type = TOK_KEYWORD;
+        prev->next->keyword.type = k;
         return true;
 }
 
@@ -444,7 +629,6 @@ match_consume_punctuator(char **cursor, Tok *prev)
         prev->next = tok_new();
         prev->next->type = TOK_PUNCTUATOR;
         prev->next->punctuator.type = p;
-        printf("New punctuator: %s\n", tok_pun_repr(p));
 
         return true;
 }
@@ -457,8 +641,6 @@ lexer(char *cursor)
         int line = 1;
         int offset;
         char *linestart = cursor;
-
-        printf("Fragment: `%s`\n", cursor);
 
         while (*cursor) {
                 while (_isspace(*cursor)) {
@@ -474,6 +656,13 @@ lexer(char *cursor)
                 offset = cursor - linestart;
 
                 if (match_consume_punctuator(&cursor, last)) {
+                        last->next->line = line;
+                        last->next->offset = offset;
+                        last = last->next;
+                        continue;
+                }
+
+                if (match_consume_keyword(&cursor, last)) {
                         last->next->line = line;
                         last->next->offset = offset;
                         last = last->next;
@@ -508,6 +697,8 @@ tok_print(Tok *t)
                 printf("Identifier: `%s`\n", t->identifier.name);
                 break;
         case TOK_KEYWORD:
+                printf("keyword: `%s`\n", tok_keyword_repr(t->keyword.type));
+                break;
         case TOK_CONSTANT:
         case TOK_STRING_LITERAL:
         default:
