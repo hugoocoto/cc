@@ -255,8 +255,7 @@ report_error(const char *format, ...)
 {
         va_list ap;
         va_start(ap, format);
-        printf(__FILE__ ": in function `%s`:\n", __func__);
-        printf("Error: ");
+        printf(__FILE__": Error: ");
         vprintf(format, ap);
         longjmp(syntax_error_jmp_env, 1);
         va_end(ap);
