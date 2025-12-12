@@ -107,8 +107,8 @@ universal-character-name:
         hexadecimal-floating-constant
 
  decimal-floating-constant:
-fractional-constant exponent-part{opt} floating-suffix{opt}
-digit-sequence exponent-part floating-suffix{opt}
+        fractional-constant exponent-part{opt} floating-suffix{opt}
+        digit-sequence exponent-part floating-suffix{opt}
 
  hexadecimal-floating-constant:
         hexadecimal-prefix hexadecimal-fractional-constant

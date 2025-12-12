@@ -21,7 +21,12 @@
 #include "../include/malloc.h"
 #include "../include/stdbool.h"
 #include "../include/string.h"
+#include <setjmp.h>
+#include <stdarg.h>
+#include <stdio.h>
+#include <string.h>
 
+jmp_buf syntax_error_jmp_env;
 
 typedef struct Tok {
         int line, offset;
@@ -50,6 +55,7 @@ typedef struct Tok {
                 struct {
                 } constant;
                 struct {
+                        char *lit;
                 } string_literal;
                 struct {
                         enum {
@@ -244,10 +250,85 @@ tok_pun_repr(int pun)
         return lookup[pun];
 }
 
+void
+report_error(const char *format, ...)
+{
+        va_list ap;
+        va_start(ap, format);
+        printf(__FILE__ ": in function `%s`:\n", __func__);
+        printf("Error: ");
+        vprintf(format, ap);
+        longjmp(syntax_error_jmp_env, 1);
+        va_end(ap);
+}
+
 Tok *
 tok_new()
 {
         return calloc(1, sizeof(Tok));
+}
+
+bool
+match(char **cursor, char c)
+{
+        if (**cursor == c) {
+                ++*cursor;
+                return true;
+        }
+        return false;
+}
+
+bool
+consume_expect(char **cursor, char c)
+{
+        if (**cursor == c) {
+                ++*cursor;
+                return true;
+        }
+        return false;
+}
+
+bool
+match_consume_string_literal(char **cursor, Tok *prev)
+{
+        char *start = *cursor;
+        bool is_lstring = false;
+
+        if (match(cursor, 'L')) {
+                is_lstring = true;
+        }
+
+        if (!consume_expect(cursor, '"')) {
+                *cursor = start;
+                return false;
+        }
+
+        while (1) {
+                if (_isschar(**cursor)) {
+                        ++*cursor;
+                        continue;
+                }
+                if (**cursor == '\\' && (*cursor)[1] == 'n') {
+                        *cursor += 2;
+                        continue;
+                }
+                break;
+        }
+
+        if (!consume_expect(cursor, '"')) {
+                report_error(' ' <= **cursor && (unsigned char) **cursor <= 127 ?
+                             "Expected `\"` but `%c` found\n" :
+                             "Expected `\"` but char `0x%0X` found\n",
+                             **cursor);
+                return false;
+        }
+
+        prev->next = tok_new();
+        prev->next->type = TOK_STRING_LITERAL;
+        prev->next->string_literal.lit =
+        strndup(start + is_lstring + 1,
+                *cursor - (start + is_lstring + 1 + 1));
+        return true;
 }
 
 bool
@@ -291,121 +372,54 @@ bool
 match_consume_keyword(char **cursor, Tok *prev)
 {
         int k;
-        if (0) {
-        } else if (!strcmp("auto", *cursor)) {
-                k = AUTO;
-                *cursor += strlen("auto");
-        } else if (!strcmp("break", *cursor)) {
-                k = BREAK;
-                *cursor += strlen("break");
-        } else if (!strcmp("case", *cursor)) {
-                k = CASE;
-                *cursor += strlen("case");
-        } else if (!strcmp("char", *cursor)) {
-                k = CHAR;
-                *cursor += strlen("char");
-        } else if (!strcmp("const", *cursor)) {
-                k = CONST;
-                *cursor += strlen("const");
-        } else if (!strcmp("continue", *cursor)) {
-                k = CONTINUE;
-                *cursor += strlen("continue");
-        } else if (!strcmp("default", *cursor)) {
-                k = DEFAULT;
-                *cursor += strlen("default");
-        } else if (!strcmp("do", *cursor)) {
-                k = DO;
-                *cursor += strlen("do");
-        } else if (!strcmp("double", *cursor)) {
-                k = DOUBLE;
-                *cursor += strlen("double");
-        } else if (!strcmp("else", *cursor)) {
-                k = ELSE;
-                *cursor += strlen("else");
-        } else if (!strcmp("enum", *cursor)) {
-                k = ENUM;
-                *cursor += strlen("enum");
-        } else if (!strcmp("extern", *cursor)) {
-                k = EXTERN;
-                *cursor += strlen("extern");
-        } else if (!strcmp("float", *cursor)) {
-                k = FLOAT;
-                *cursor += strlen("float");
-        } else if (!strcmp("for", *cursor)) {
-                k = FOR;
-                *cursor += strlen("for");
-        } else if (!strcmp("goto", *cursor)) {
-                k = GOTO;
-                *cursor += strlen("goto");
-        } else if (!strcmp("if", *cursor)) {
-                k = IF;
-                *cursor += strlen("if");
-        } else if (!strcmp("inline", *cursor)) {
-                k = INLINE;
-                *cursor += strlen("inline");
-        } else if (!strcmp("int", *cursor)) {
-                k = INT;
-                *cursor += strlen("int");
-        } else if (!strcmp("long", *cursor)) {
-                k = LONG;
-                *cursor += strlen("long");
-        } else if (!strcmp("register", *cursor)) {
-                k = REGISTER;
-                *cursor += strlen("register");
-        } else if (!strcmp("restrict", *cursor)) {
-                k = RESTRICT;
-                *cursor += strlen("restrict");
-        } else if (!strcmp("return", *cursor)) {
-                k = RETURN;
-                *cursor += strlen("return");
-        } else if (!strcmp("short", *cursor)) {
-                k = SHORT;
-                *cursor += strlen("short");
-        } else if (!strcmp("signed", *cursor)) {
-                k = SIGNED;
-                *cursor += strlen("signed");
-        } else if (!strcmp("sizeof", *cursor)) {
-                k = SIZEOF;
-                *cursor += strlen("sizeof");
-        } else if (!strcmp("static", *cursor)) {
-                k = STATIC;
-                *cursor += strlen("static");
-        } else if (!strcmp("struct", *cursor)) {
-                k = STRUCT;
-                *cursor += strlen("struct");
-        } else if (!strcmp("switch", *cursor)) {
-                k = SWITCH;
-                *cursor += strlen("switch");
-        } else if (!strcmp("typedef", *cursor)) {
-                k = TYPEDEF;
-                *cursor += strlen("typedef");
-        } else if (!strcmp("union", *cursor)) {
-                k = UNION;
-                *cursor += strlen("union");
-        } else if (!strcmp("unsigned", *cursor)) {
-                k = UNSIGNED;
-                *cursor += strlen("unsigned");
-        } else if (!strcmp("void", *cursor)) {
-                k = VOID;
-                *cursor += strlen("void");
-        } else if (!strcmp("volatile", *cursor)) {
-                k = VOLATILE;
-                *cursor += strlen("volatile");
-        } else if (!strcmp("while", *cursor)) {
-                k = WHILE;
-                *cursor += strlen("while");
-        } else if (!strcmp("_Bool", *cursor)) {
-                k = _BOOL;
-                *cursor += strlen("_Bool");
-        } else if (!strcmp("_Complex", *cursor)) {
-                k = _COMPLEX;
-                *cursor += strlen("_Complex");
-        } else if (!strcmp("_Imaginary", *cursor)) {
-                k = _IMAGINARY;
-                *cursor += strlen("_Imaginary");
+
+#define MATCH_CONSUME(_kw_, _KW_)          \
+        else if (!strcmp((_kw_), *cursor)) \
+        {                                  \
+                k = (_KW_);                \
+                *cursor += strlen(_kw_);   \
         }
 
-        else {
+        if (0) {
+        }
+        MATCH_CONSUME("break", BREAK)
+        MATCH_CONSUME("case", CASE)
+        MATCH_CONSUME("char", CHAR)
+        MATCH_CONSUME("const", CONST)
+        MATCH_CONSUME("continue", CONTINUE)
+        MATCH_CONSUME("default", DEFAULT)
+        MATCH_CONSUME("do", DO)
+        MATCH_CONSUME("double", DOUBLE)
+        MATCH_CONSUME("else", ELSE)
+        MATCH_CONSUME("enum", ENUM)
+        MATCH_CONSUME("extern", EXTERN)
+        MATCH_CONSUME("float", FLOAT)
+        MATCH_CONSUME("for", FOR)
+        MATCH_CONSUME("goto", GOTO)
+        MATCH_CONSUME("if", IF)
+        MATCH_CONSUME("inline", INLINE)
+        MATCH_CONSUME("int", INT)
+        MATCH_CONSUME("long", LONG)
+        MATCH_CONSUME("register", REGISTER)
+        MATCH_CONSUME("restrict", RESTRICT)
+        MATCH_CONSUME("return", RETURN)
+        MATCH_CONSUME("short", SHORT)
+        MATCH_CONSUME("signed", SIGNED)
+        MATCH_CONSUME("sizeof", SIZEOF)
+        MATCH_CONSUME("static", STATIC)
+        MATCH_CONSUME("struct", STRUCT)
+        MATCH_CONSUME("switch", SWITCH)
+        MATCH_CONSUME("typedef", TYPEDEF)
+        MATCH_CONSUME("union", UNION)
+        MATCH_CONSUME("unsigned", UNSIGNED)
+        MATCH_CONSUME("void", VOID)
+        MATCH_CONSUME("volatile", VOLATILE)
+        MATCH_CONSUME("while", WHILE)
+        MATCH_CONSUME("_Bool", _BOOL)
+        MATCH_CONSUME("_Complex", _COMPLEX)
+        MATCH_CONSUME("_Imaginary", _IMAGINARY)
+        else
+        {
                 return false;
         }
 
@@ -413,6 +427,8 @@ match_consume_keyword(char **cursor, Tok *prev)
         prev->next->type = TOK_KEYWORD;
         prev->next->keyword.type = k;
         return true;
+
+#undef MATCH_CONSUME
 }
 
 bool
@@ -639,26 +655,45 @@ lexer(char *cursor)
         Tok head = { 0 };
         Tok *last = &head;
         int line = 1;
-        int offset;
+        int offset = 0;
         char *linestart = cursor;
+        bool recovered = true;
+
+        if (setjmp(syntax_error_jmp_env) && recovered) {
+                printf(" %4d   %*.*s\n",
+                       line,
+                       (int) strcspn(linestart, "\n\0"),
+                       (int) strcspn(linestart, "\n\0"),
+                       linestart);
+                printf("        %*.*s%s\n",
+                       (int) (cursor - linestart),
+                       (int) (cursor - linestart),
+                       "", "^");
+                recovered = false;
+
+                // At least for strings
+                while (*cursor != '"' && *cursor != '\n') {
+                        ++cursor;
+                }
+                ++cursor;
+        };
 
         while (*cursor) {
                 while (_isspace(*cursor)) {
                         if (*cursor == '\n') {
                                 ++line;
-                                /* Can be cursor +1 but this way
-                                 * it starts in 1 by default */
-                                linestart = cursor;
+                                linestart = cursor + 1;
                         }
                         ++cursor;
                 }
 
-                offset = cursor - linestart;
+                offset = cursor - linestart + 1;
 
                 if (match_consume_punctuator(&cursor, last)) {
                         last->next->line = line;
                         last->next->offset = offset;
                         last = last->next;
+                        recovered = true;
                         continue;
                 }
 
@@ -666,6 +701,15 @@ lexer(char *cursor)
                         last->next->line = line;
                         last->next->offset = offset;
                         last = last->next;
+                        recovered = true;
+                        continue;
+                }
+
+                if (match_consume_string_literal(&cursor, last)) {
+                        last->next->line = line;
+                        last->next->offset = offset;
+                        last = last->next;
+                        recovered = true;
                         continue;
                 }
 
@@ -673,12 +717,12 @@ lexer(char *cursor)
                         last->next->line = line;
                         last->next->offset = offset;
                         last = last->next;
+                        recovered = true;
                         continue;
                 }
 
                 if (*cursor) {
-                        printf("Lex: invalid char: '%c'\n", *cursor);
-                        ++cursor;
+                        report_error("Invalid char %c\n", *cursor);
                 }
         }
 
@@ -699,8 +743,10 @@ tok_print(Tok *t)
         case TOK_KEYWORD:
                 printf("keyword: `%s`\n", tok_keyword_repr(t->keyword.type));
                 break;
-        case TOK_CONSTANT:
         case TOK_STRING_LITERAL:
+                printf("string-literal: `%s`\n", t->string_literal.lit);
+                break;
+        case TOK_CONSTANT:
         default:
                 assert(!"Invalid token type found!");
         }

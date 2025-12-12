@@ -45,3 +45,14 @@ _isunichar(char *c)
         }
         return false;
 }
+
+static bool
+_isschar(char c)
+{
+        /* The newline escseq is a s-char, but as it's two chars wide I don't
+         * parse it here */
+        if (c < ' ' || (unsigned char) c > 127 || c == '"' || c == '\\') {
+                return false;
+        }
+        return true;
+}

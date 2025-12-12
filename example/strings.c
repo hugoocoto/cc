@@ -1,0 +1,6 @@
+"Hello"
+""
+"some newline\n"
+"some escape seq \r"
+L"A lstring"
+"some other string"
