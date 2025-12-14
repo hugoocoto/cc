@@ -1,3 +1,3 @@
 # C compiler
 
-Status: unusable
+Permanently moved to codeberg.org/hugocoto/cc
